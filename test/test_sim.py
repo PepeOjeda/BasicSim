@@ -12,7 +12,7 @@ import xacro
 #===========================
 def launch_arguments():
     return [
-        DeclareLaunchArgument("worldFile", default_value="test.yaml"),
+        DeclareLaunchArgument("worldFile", default_value="resources/test.yaml"),
     ]
 #==========================
 
@@ -21,21 +21,41 @@ def launch_setup(context, *args, **kwargs):
 
     # robot description for state_publisher
     robot_desc1 = xacro.process_file(
-        os.path.join(test_dir, "giraff.xacro"),
+        os.path.join(test_dir, "resources", "giraff.xacro"),
         mappings={"frame_ns": "giraff1"},
     )
     robot_desc1 = robot_desc1.toprettyxml(indent="  ")
 
-    visualization_nodes = Node(
-            package="robot_state_publisher",
-            executable="robot_state_publisher",
-            parameters=[{"use_sim_time": True, "robot_description": robot_desc1}],
+    robot_desc2 = xacro.process_file(
+        os.path.join(test_dir, "resources", "giraff.xacro"),
+        mappings={"frame_ns": "giraff2"},
+    )
+    robot_desc2 = robot_desc2.toprettyxml(indent="  ")
+
+    visualization_node1 = GroupAction(
+        [
+            PushRosNamespace("giraff1"),
+            Node(
+                package="robot_state_publisher",
+                executable="robot_state_publisher",
+                parameters=[{"use_sim_time": True, "robot_description": robot_desc1}],
+            )
+        ]
+    )
+    visualization_node2 = GroupAction(
+        [
+            PushRosNamespace("giraff2"),
+            Node(
+                package="robot_state_publisher",
+                executable="robot_state_publisher",
+                parameters=[{"use_sim_time": True, "robot_description": robot_desc2}],
+            )
+        ]
     )
 
     basic_sim = Node(
             package="basic_sim",
             executable="basic_sim",
-            #prefix = "xterm -e gdb --args",
             parameters=[
                 {"deltaTime": 0.1},
                 {"speed": 1.0},
@@ -64,9 +84,19 @@ def launch_setup(context, *args, **kwargs):
                 ],
         )
     
+    rviz = Node(
+        package="rviz2",
+        executable="rviz2",
+        name="rviz",
+        arguments=[
+			"-d" + os.path.join(test_dir, "resources", "basic_sim.rviz")
+		],
+    )
     return [
-        visualization_nodes,
-        #basic_sim,
+        basic_sim,
+        rviz,
+        visualization_node1,
+        visualization_node2,
         keyboard_control1,
         keyboard_control2
         ]
