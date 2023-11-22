@@ -5,7 +5,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <rosgraph_msgs/msg/clock.hpp>
 #include <nav_msgs/msg/occupancy_grid.hpp>
-
+#include <yaml-cpp/yaml.h>
 
 class BasicSim : public rclcpp::Node
 {
@@ -33,5 +33,6 @@ class BasicSim : public rclcpp::Node
     std::vector<Robot> robots;
 
     void parseFile(std::string& filepath);
+    void parseRobot(YAML::Node robotYAML);
     void publishClock();
 };

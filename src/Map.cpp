@@ -1,5 +1,5 @@
 #include <basic_sim/Map.hpp>
-#include <basic_sim/core/Logging.hpp>
+#include <basic_sim/Logging.hpp>
 #include <basic_sim/ConvertYAML.hpp>
 #include <opencv4/opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
@@ -96,4 +96,19 @@ nav_msgs::msg::OccupancyGrid Map::asOccupancyGrid() const
     std::transform(occupancyGrid.cbegin(), occupancyGrid.cend(), std::back_inserter(msg.data),
                [](CellState a) { return static_cast<int8_t>(a); });
     return msg;
+}
+
+
+DDA::_2D::Map<CellState> Map::asDDAMap() const
+{
+    DDA::_2D::Map<CellState> DDAMap;
+    DDAMap.origin = DDA::Vector2(origin.x(), origin.y());
+    DDAMap.resolution = resolution;
+    DDAMap.cells.resize(width, std::vector<CellState>(height));
+    
+    #pragma omp parallel for collapse(2)
+    for(int i = 0; i<width; i++)
+        for(int j = 0; j<height; j++)
+            DDAMap.cells[i][j] = at(i,j);
+    return DDAMap;
 }

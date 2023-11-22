@@ -56,9 +56,10 @@ def launch_setup(context, *args, **kwargs):
     basic_sim = Node(
             package="basic_sim",
             executable="basic_sim",
+            prefix = "xterm -e",
             parameters=[
                 {"deltaTime": 0.1},
-                {"speed": 1.0},
+                {"speed": 10.0},
                 {"worldFile": os.path.join(test_dir, LaunchConfiguration("worldFile").perform(context))}
                 ],
         )

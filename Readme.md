@@ -9,10 +9,11 @@ Does:
 - Publishes `odom -> (robot)_base_link` TF for each robot.
 - Listens to `/(robot)/cmd_vel` and applies the velocity commands to move the robot.
 - Reads ros2 OccupancyGrid files (same format as map_server) and keeps the robot outside of walls.
-- Multiple robots in the same simulation session.
+- Keeps track of multiple robots in the same simulation session.
+- Simulates 2D laser scanners.
 
 Does not do:
 - Physics.
 - Velocity or acceleration limits.
-- Sensors (2D laser scanner will probably be implemented in the future).
+- Any sensors other than 2D laser scanners.
 - Robot-robot collision.

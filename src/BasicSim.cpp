@@ -1,4 +1,4 @@
-#include <basic_sim/core/Logging.hpp>
+#include <basic_sim/Logging.hpp>
 #include <basic_sim/BasicSim.hpp>
 #include <basic_sim/ConvertYAML.hpp>
 #include <filesystem>
@@ -33,8 +33,12 @@ BasicSim::BasicSim() : Node("basic_sim")
 
 void BasicSim::Update()
 {
+    rclcpp::Time profileTime = now();
     for (Robot& robot : robots)
         robot.OnUpdate(deltaTime);
+    
+    rclcpp::Duration ellapsed = (now() - profileTime);
+    BS_INFO("Update time %f", ellapsed.seconds());
     publishClock();
 }
 
@@ -61,9 +65,8 @@ void BasicSim::parseFile(std::string& filepath)
     }
     std::filesystem::path bs_yamlPath(filepath);
 
-
     YAML::Node bs_yaml = YAML::LoadFile(filepath);
-    
+
     // map image
     YAML::Node mapYAML = bs_yaml["map"];
     if (!mapYAML)
@@ -72,10 +75,10 @@ void BasicSim::parseFile(std::string& filepath)
         fail();
     }
 
-        //if the map's YAML file is specified with a relative path, interpret it as being relative to the BasicSim yaml
+    // if the map's YAML file is specified with a relative path, interpret it as being relative to the BasicSim yaml
     std::filesystem::path mapYamlPath(mapYAML.as<std::string>());
-    if(mapYamlPath.is_relative())
-        mapYamlPath = bs_yamlPath.parent_path()/mapYamlPath;
+    if (mapYamlPath.is_relative())
+        mapYamlPath = bs_yamlPath.parent_path() / mapYamlPath;
     if (!map.readFile(mapYamlPath))
     {
         BS_ERROR("Failure parsing map image!");
@@ -83,7 +86,7 @@ void BasicSim::parseFile(std::string& filepath)
     }
     mapPub->publish(map.asOccupancyGrid());
 
-    //robots
+    // robots
     YAML::Node robotsList = bs_yaml["robots"];
     if (!robotsList)
     {
@@ -94,11 +97,45 @@ void BasicSim::parseFile(std::string& filepath)
     robots.reserve(robotsList.size());
     for (YAML::Node robot : robotsList)
     {
+        parseRobot(robot);
+    }
+}
+
+void BasicSim::parseRobot(YAML::Node robotYAML)
+{
+    try
+    {
+        std::string name = robotYAML["name"].as<std::string>();
         tf2::Transform initialPose;
 
-        initialPose.setOrigin(robot["position"].as<tf2::Vector3>());
-        initialPose.setRotation(tf2::Quaternion({0, 0, 1}, robot["angle"].as<double>()));
+        initialPose.setOrigin(robotYAML["position"].as<tf2::Vector3>());
+        initialPose.setRotation(tf2::Quaternion({0, 0, 1}, robotYAML["angle"].as<double>()));
 
-        robots.emplace_back(std::make_shared<rclcpp::Node>(robot["name"].as<std::string>()), initialPose, this);
+        YAML::Node sensorsListYAML = robotYAML["sensors"];
+        
+        std::vector<LaserSensorDescription> lasersList;
+
+        for (YAML::Node sensor : sensorsListYAML)
+        {
+            if(sensor["type"].as<std::string>() != "laser")
+            {
+                BS_ERROR("Sensor type %s is not supported! Currently the only sensor type is \"laser\".", sensor["type"].as<std::string>().c_str());
+                continue;
+            }
+
+            LaserSensorDescription& laser = lasersList.emplace_back();
+            laser.name = sensor["name"].as<std::string>();
+            laser.minAngleRad = sensor["minAngleRad"].as<float>();
+            laser.maxAngleRad = sensor["maxAngleRad"].as<float>();
+            laser.angleResolutionRad = sensor["angleResolutionRad"].as<float>();
+            laser.minDistance = sensor["minDistance"].as<float>();
+            laser.maxDistance = sensor["maxDistance"].as<float>();
+        }
+
+        robots.emplace_back(name, initialPose, this, lasersList);
+    }
+    catch(std::exception& e)
+    {
+        BS_ERROR("Error parsing sensor description in simulation YAML: %s", e.what());
     }
 }
