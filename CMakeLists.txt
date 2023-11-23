@@ -15,20 +15,19 @@ set(AMENT_DEPS
     tf2_geometry_msgs
     nav_msgs
     sensor_msgs
+    yaml_cpp_vendor
     )
 
 foreach(Dependency IN ITEMS ${AMENT_DEPS})
   find_package(${Dependency} REQUIRED)
 endforeach()
 
-add_subdirectory(third_party/yaml-cpp)
 
 
 
 #Target
 include_directories(
     ./include
-    third_party/yaml-cpp/include
     third_party/DDA/include
     )
 
@@ -43,7 +42,6 @@ ament_target_dependencies(basic_sim
 ${AMENT_DEPS})
 
 target_link_libraries(basic_sim 
-yaml-cpp::yaml-cpp 
 ${OpenCV_LIBS}
 OpenMP::OpenMP_CXX)
 

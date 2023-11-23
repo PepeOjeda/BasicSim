@@ -1,6 +1,7 @@
 #include <basic_sim/Logging.hpp>
 #include <basic_sim/BasicSim.hpp>
 #include <basic_sim/ConvertYAML.hpp>
+#include <basic_sim/Profiling/ScopedStopwatch.hpp>
 #include <filesystem>
 
 int main(int argc, char** argv)
@@ -33,12 +34,13 @@ BasicSim::BasicSim() : Node("basic_sim")
 
 void BasicSim::Update()
 {
-    rclcpp::Time profileTime = now();
+#if 0
+    Profiling::ScopedStopwatch stopwatch("MainLoop");
+#endif
+
     for (Robot& robot : robots)
         robot.OnUpdate(deltaTime);
     
-    rclcpp::Duration ellapsed = (now() - profileTime);
-    BS_INFO("Update time %f", ellapsed.seconds());
     publishClock();
 }
 
