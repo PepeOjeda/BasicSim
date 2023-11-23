@@ -49,7 +49,7 @@ void BasicSim::publishClock()
     rosgraph_msgs::msg::Clock msg;
     rclcpp::Duration ellapsed = (now() - startTime);
     msg.clock = rclcpp::Time{(int64_t)(speed * ellapsed.nanoseconds())};
-    lastSentClockMsg = msg.clock;
+    currentTime = msg.clock;
     clockPub->publish(msg);
 }
 

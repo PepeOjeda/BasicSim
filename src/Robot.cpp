@@ -11,14 +11,20 @@ Robot::Robot(std::string& name, const tf2::Transform& startingPose, const BasicS
     std::string cmd_vel_topic = "/" + m_name + "/cmd_vel";
     m_cmd_velSub = m_node->create_subscription<geo::Twist>(cmd_vel_topic, 1, std::bind(&Robot::cmd_velCallback, this, std::placeholders::_1));
 
-    m_robotBaseBroadcaster = std::make_shared<tf2_ros::TransformBroadcaster>(m_node);
 
+    m_robotBaseBroadcaster = std::make_shared<tf2_ros::TransformBroadcaster>(m_node);
+    m_posePub = m_node->create_publisher<geo::PoseWithCovarianceStamped>("/"+m_name+"/ground_truth", rclcpp::QoS(5));
+    m_resetPoseSub = m_node->create_subscription<geo::PoseWithCovarianceStamped>("/"+m_name+"/initialpose", rclcpp::QoS(1), std::bind(&Robot::resetPoseCallback, this, std::placeholders::_1));
+
+    // publish static map_odom TF (published only once)
     m_odomGroundTruthBroadcaster = std::make_shared<tf2_ros::StaticTransformBroadcaster>(m_node);
     geo::TransformStamped mapToOdom;
     mapToOdom.header.frame_id = "map";
-    mapToOdom.child_frame_id = "odom";
+    mapToOdom.child_frame_id = m_name + "_odom";
     m_odomGroundTruthBroadcaster->sendTransform(mapToOdom);
 
+
+    // create the sensors specified in the YAML
     m_laserScanners.reserve(lasers.size());
     for(const auto& laserDesc : lasers)
     {
@@ -30,11 +36,6 @@ Robot::Robot(std::string& name, const tf2::Transform& startingPose, const BasicS
     BS_INFO("Created robot %s", m_name.c_str());
 }
 
-void Robot::cmd_velCallback(geo::Twist::SharedPtr msg)
-{
-    m_currentTwist.linear = msg->linear;
-    m_currentTwist.angular = msg->angular;
-}
 
 void Robot::OnUpdate(float deltaTime)
 {
@@ -63,11 +64,21 @@ void Robot::UpdatePose(float deltaTime)
 
     // send TF
     geo::TransformStamped odomToBase;
-    odomToBase.header.frame_id = "odom";
+    odomToBase.header.frame_id = m_name + "_odom";
     odomToBase.header.stamp = m_sim->getCurrentTime();
     odomToBase.child_frame_id = getRobotFrameId();
     odomToBase.transform = tf2::toMsg(m_currentTransform);
     m_robotBaseBroadcaster->sendTransform(odomToBase);
+
+    //publish PoseWithCovarianceStamped msg to /(robot)/ground_truth
+    geo::PoseWithCovarianceStamped poseMsg;
+    poseMsg.header.frame_id = "map";
+    poseMsg.header.stamp = m_sim->getCurrentTime();
+    poseMsg.pose.pose.position.x = odomToBase.transform.translation.x;
+    poseMsg.pose.pose.position.y = odomToBase.transform.translation.y;
+    poseMsg.pose.pose.position.z = odomToBase.transform.translation.z;
+    poseMsg.pose.pose.orientation = odomToBase.transform.rotation;
+    m_posePub->publish(poseMsg);
 }
 
 void Robot::UpdateSensors(float deltaTime)
@@ -87,4 +98,20 @@ void Robot::UpdateSensors(float deltaTime)
 std::string Robot::getRobotFrameId()
 {
     return m_name + "_base_link";
+}
+
+void Robot::resetPoseCallback(geo::PoseWithCovarianceStamped::SharedPtr msg)
+{
+    tf2::Vector3 position = {msg->pose.pose.position.x, msg->pose.pose.position.y, msg->pose.pose.position.z};
+
+    CellState cellState = m_sim->map.at(position);
+    if (cellState == CellState::Free)
+        m_currentTransform.setOrigin(position);
+    else
+        BS_ERROR("Trying to set robot %s to position (%.2f, %.2f, %.2f), but it is not free!", m_name.c_str(), position.x(), position.y(), position.z());
+}
+
+void Robot::cmd_velCallback(geo::Twist::SharedPtr msg)
+{
+    m_currentTwist = *msg;
 }

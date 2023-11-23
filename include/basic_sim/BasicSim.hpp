@@ -15,7 +15,7 @@ class BasicSim : public rclcpp::Node
 
     double getDeltaTime() const {return deltaTime;}
     double getSpeed() const {return speed;}
-    rclcpp::Time getCurrentTime() const {return lastSentClockMsg;}
+    rclcpp::Time getCurrentTime() const {return currentTime;}
     
     Map map;
     
@@ -23,7 +23,7 @@ class BasicSim : public rclcpp::Node
     double deltaTime;
     double speed;
     rclcpp::Time startTime;
-    rclcpp::Time lastSentClockMsg;
+    rclcpp::Time currentTime;
     rclcpp::Publisher<rosgraph_msgs::msg::Clock>::SharedPtr clockPub;
     rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr mapPub;
     
