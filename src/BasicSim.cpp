@@ -30,6 +30,7 @@ BasicSim::BasicSim() : Node("basic_sim")
     auto file = declare_parameter<std::string>("worldFile", "");
     parseFile(file);
     startTime = now();
+    currentTime = rclcpp::Time(0);
 }
 
 void BasicSim::Update()

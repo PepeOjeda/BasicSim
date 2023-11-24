@@ -29,7 +29,6 @@ private:
     rclcpp::Node::SharedPtr m_node;
     std::string m_name;
     tf2::Transform m_currentTransform;
-    geo::Twist m_currentTwist;
 
     std::vector<LaserSensor> m_laserScanners;
 
@@ -39,9 +38,16 @@ private:
     std::shared_ptr<tf2_ros::TransformBroadcaster> m_robotBaseBroadcaster;
     rclcpp::Publisher<geo::PoseWithCovarianceStamped>::SharedPtr m_posePub;
 
-    void cmd_velCallback(geo::Twist::SharedPtr msg);
     void UpdatePose(float deltaTime);
     void UpdateSensors(float deltaTime);
     std::string getRobotFrameId();
+
+    struct VelocityMsg
+    {
+        rclcpp::Time simTimeStamp;
+        geo::Twist twist;
+        void Reset();
+    } m_currentVelocityMsg;
+    void cmd_velCallback(geo::Twist::SharedPtr msg);
     void resetPoseCallback(geo::PoseWithCovarianceStamped::SharedPtr msg);
 };

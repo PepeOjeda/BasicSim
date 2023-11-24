@@ -33,6 +33,7 @@ Robot::Robot(std::string& name, const tf2::Transform& startingPose, const BasicS
         sensor.frame_id = getRobotFrameId(); //TODO maybe add the option to attach the scanner to a different TF frame.
     }
 
+    m_currentVelocityMsg.simTimeStamp = m_sim->getCurrentTime();
     BS_INFO("Created robot %s", m_name.c_str());
 }
 
@@ -46,13 +47,15 @@ void Robot::OnUpdate(float deltaTime)
 
 void Robot::UpdatePose(float deltaTime)
 {
-    tf2::Transform nextTransform;
+    if(m_sim->getCurrentTime().seconds()-m_currentVelocityMsg.simTimeStamp.seconds() > 0.5)
+        m_currentVelocityMsg.Reset();
 
+    tf2::Transform nextTransform;
     // we are applying rotation first, displacement later
     // not calculating the arc from applying both simultaneously, because deltaTime is very small
-    tf2::Quaternion rotation({0, 0, 1}, m_currentTwist.angular.z * deltaTime);
+    tf2::Quaternion rotation({0, 0, 1}, m_currentVelocityMsg.twist.angular.z * deltaTime);
     tf2::Vector3 linearMovement;
-    tf2::fromMsg(m_currentTwist.linear, linearMovement);
+    tf2::fromMsg(m_currentVelocityMsg.twist.linear, linearMovement);
     linearMovement *= deltaTime;
     tf2::Transform movement(rotation, tf2::quatRotate(rotation, linearMovement));
 
@@ -113,5 +116,17 @@ void Robot::resetPoseCallback(geo::PoseWithCovarianceStamped::SharedPtr msg)
 
 void Robot::cmd_velCallback(geo::Twist::SharedPtr msg)
 {
-    m_currentTwist = *msg;
+    m_currentVelocityMsg.twist = *msg;
+    m_currentVelocityMsg.simTimeStamp = m_sim->getCurrentTime();
+}
+
+void Robot::VelocityMsg::Reset()
+{
+    twist.linear.x = 0;
+    twist.linear.y = 0;
+    twist.linear.z = 0;
+
+    twist.angular.x = 0;
+    twist.angular.y = 0;
+    twist.angular.z = 0;
 }
