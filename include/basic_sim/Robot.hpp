@@ -1,5 +1,6 @@
 #pragma once
 #include <rclcpp/rclcpp.hpp>
+#include <nav_msgs/msg/odometry.hpp>
 #include <geometry_msgs/msg/twist.hpp>
 #include <geometry_msgs/msg/transform_stamped.hpp>
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
@@ -37,6 +38,7 @@ private:
     std::shared_ptr<tf2_ros::StaticTransformBroadcaster> m_odomGroundTruthBroadcaster;
     std::shared_ptr<tf2_ros::TransformBroadcaster> m_robotBaseBroadcaster;
     rclcpp::Publisher<geo::PoseWithCovarianceStamped>::SharedPtr m_posePub;
+    rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr m_odomPub;
 
     void UpdatePose(float deltaTime);
     void UpdateSensors(float deltaTime);

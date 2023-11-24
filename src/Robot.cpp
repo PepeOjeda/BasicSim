@@ -15,8 +15,13 @@ Robot::Robot(std::string& name, const tf2::Transform& startingPose, const BasicS
     m_robotBaseBroadcaster = std::make_shared<tf2_ros::TransformBroadcaster>(m_node);
     m_posePub = m_node->create_publisher<geo::PoseWithCovarianceStamped>("/"+m_name+"/ground_truth", rclcpp::QoS(5));
     m_resetPoseSub = m_node->create_subscription<geo::PoseWithCovarianceStamped>("/"+m_name+"/initialpose", rclcpp::QoS(1), std::bind(&Robot::resetPoseCallback, this, std::placeholders::_1));
-
+    m_odomPub = m_node -> create_publisher<nav_msgs::msg::Odometry>("/"+m_name+"/odom", rclcpp::QoS(1));
+    
     // publish static map_odom TF (published only once)
+
+    //TODO Right now the odom frame is perfectly aligned with the map frame. This is fine, since we don't actually need to do anything with it
+    // however, it might be nice to do the standard ROS thing and place the origin of odom at the robot's initial pose
+    // if we make this change, we need to modify the message that is published to the odom topic in UpdatePose() accordingly 
     m_odomGroundTruthBroadcaster = std::make_shared<tf2_ros::StaticTransformBroadcaster>(m_node);
     geo::TransformStamped mapToOdom;
     mapToOdom.header.frame_id = "map";
@@ -82,6 +87,15 @@ void Robot::UpdatePose(float deltaTime)
     poseMsg.pose.pose.position.z = odomToBase.transform.translation.z;
     poseMsg.pose.pose.orientation = odomToBase.transform.rotation;
     m_posePub->publish(poseMsg);
+
+    //publish Odometry msg
+    nav_msgs::msg::Odometry odomMsg;
+    odomMsg.header.frame_id = m_name + "_odom";
+    odomMsg.header.stamp = m_sim->getCurrentTime();
+    odomMsg.child_frame_id = getRobotFrameId();
+    odomMsg.pose = poseMsg.pose; //TODO this only works because map and odom are the same frame! If we change the odom frame we will need to transform the (map frame) pose to it before sending
+    odomMsg.twist.twist = m_currentVelocityMsg.twist;
+    m_odomPub->publish(odomMsg);
 }
 
 void Robot::UpdateSensors(float deltaTime)
