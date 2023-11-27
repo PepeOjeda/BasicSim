@@ -122,6 +122,8 @@ Visualization Manager:
           Value: true
         giraff1_neck:
           Value: true
+        giraff1_odom:
+          Value: true
         giraff1_red_button:
           Value: true
         giraff1_right_wheel:
@@ -142,6 +144,8 @@ Visualization Manager:
           Value: true
         giraff2_neck:
           Value: true
+        giraff2_odom:
+          Value: true
         giraff2_red_button:
           Value: true
         giraff2_right_wheel:
@@ -150,8 +154,6 @@ Visualization Manager:
           Value: true
         map:
           Value: true
-        odom:
-          Value: true
       Marker Scale: 1
       Name: TF
       Show Arrows: true
@@ -159,7 +161,7 @@ Visualization Manager:
       Show Names: false
       Tree:
         map:
-          odom:
+          giraff1_odom:
             giraff1_base_link:
               giraff1_body:
                 giraff1_green_button:
@@ -176,6 +178,7 @@ Visualization Manager:
                 {}
               giraff1_right_wheel:
                 {}
+          giraff2_odom:
             giraff2_base_link:
               giraff2_body:
                 giraff2_green_button:
@@ -433,9 +436,9 @@ Visualization Manager:
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 2.9222373962402344
-        Y: 4.406893730163574
-        Z: -0.05336230993270874
+        X: 3.977362871170044
+        Y: 5.476805686950684
+        Z: -0.3296431005001068
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false

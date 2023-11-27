@@ -33,9 +33,9 @@ robots:
     sensors:
       - type: "laser"
         name: "laser_scanner" 
-        minAngleRad: 0
-        maxAngleRad: 3.14159
-        angleResolutionRad: 0.001 
+        minAngleRad: -1.9
+        maxAngleRad: 1.9
+        angleResolutionRad: 0.01 
         minDistance: 0.1
         maxDistance: 4.0
 
