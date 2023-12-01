@@ -4,7 +4,7 @@
 #include <basic_sim/Logging.hpp>
 
 Robot::Robot(std::string& name, const tf2::Transform& startingPose, const BasicSim* sim, const std::vector<LaserSensorDescription>& lasers)
-    : m_name(name), m_currentTransform(startingPose), m_sim(sim)
+    : m_name(name), m_currentTransform(startingPose), m_startingTransform(startingPose), m_sim(sim)
 {
     m_node = std::make_shared<rclcpp::Node>(name);
 
@@ -119,13 +119,24 @@ std::string Robot::getRobotFrameId()
 
 void Robot::resetPoseCallback(geo::PoseWithCovarianceStamped::SharedPtr msg)
 {
+#define IGNORE_MSG_Z 1 //because rviz's initialpose tool always sets z to 0, and that's quite annoying. At some point there should probably be a custom rviz tool for this
+#if IGNORE_MSG_Z
+    tf2::Vector3 position = {msg->pose.pose.position.x, msg->pose.pose.position.y, m_currentTransform.getOrigin().z()};
+#else
     tf2::Vector3 position = {msg->pose.pose.position.x, msg->pose.pose.position.y, msg->pose.pose.position.z};
-
+#endif
     CellState cellState = m_sim->map.at(position);
     if (cellState == CellState::Free)
         m_currentTransform.setOrigin(position);
     else
         BS_ERROR("Trying to set robot %s to position (%.2f, %.2f, %.2f), but it is not free!", m_name.c_str(), position.x(), position.y(), position.z());
+}
+
+void Robot::ResetToStartingPose()
+{
+	BS_INFO("Reset robot %s to starting position.", m_name.c_str());
+	m_currentTransform = m_startingTransform;
+	m_currentVelocityMsg.Reset();
 }
 
 void Robot::cmd_velCallback(geo::Twist::SharedPtr msg)
@@ -144,3 +155,4 @@ void Robot::VelocityMsg::Reset()
     twist.angular.y = 0;
     twist.angular.z = 0;
 }
+

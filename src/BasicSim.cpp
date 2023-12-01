@@ -24,6 +24,8 @@ BasicSim::BasicSim() : Node("basic_sim")
 {
     clockPub = create_publisher<rosgraph_msgs::msg::Clock>("/clock", rclcpp::QoS(1).best_effort());
     mapPub = create_publisher<nav_msgs::msg::OccupancyGrid>("/basic_sim/map", rclcpp::QoS(1).transient_local());
+    resetRobotsSub = create_subscription<std_msgs::msg::String>("/basic_sim/reset", rclcpp::QoS(1).transient_local(),
+                                                                std::bind(&BasicSim::ResetRobotsToStartingPose, this, std::placeholders::_1));
     deltaTime = declare_parameter<double>("deltaTime", 0.1);
     speed = declare_parameter<double>("speed", 1);
 
@@ -41,7 +43,7 @@ void BasicSim::Update()
 
     for (Robot& robot : robots)
         robot.OnUpdate(deltaTime);
-    
+
     publishClock();
 }
 
@@ -115,12 +117,12 @@ void BasicSim::parseRobot(YAML::Node robotYAML)
         initialPose.setRotation(tf2::Quaternion({0, 0, 1}, robotYAML["angle"].as<double>()));
 
         YAML::Node sensorsListYAML = robotYAML["sensors"];
-        
+
         std::vector<LaserSensorDescription> lasersList;
 
         for (YAML::Node sensor : sensorsListYAML)
         {
-            if(sensor["type"].as<std::string>() != "laser")
+            if (sensor["type"].as<std::string>() != "laser")
             {
                 BS_ERROR("Sensor type %s is not supported! Currently the only sensor type is \"laser\".", sensor["type"].as<std::string>().c_str());
                 continue;
@@ -137,8 +139,23 @@ void BasicSim::parseRobot(YAML::Node robotYAML)
 
         robots.emplace_back(name, initialPose, this, lasersList);
     }
-    catch(std::exception& e)
+    catch (std::exception& e)
     {
         BS_ERROR("Error parsing sensor description in simulation YAML: %s", e.what());
     }
+}
+
+void BasicSim::ResetRobotsToStartingPose(std_msgs::msg::String::SharedPtr msg)
+{
+    if (msg->data == "all")
+    {
+        for (Robot& robot : robots)
+            robot.ResetToStartingPose();
+    }
+	else
+	{
+        for (Robot& robot : robots)
+			if(robot.m_name == msg->data)
+            	robot.ResetToStartingPose();
+	}
 }

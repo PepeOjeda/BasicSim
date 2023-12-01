@@ -24,11 +24,13 @@ public:
     Robot(std::string& name, const tf2::Transform& startingPose, const BasicSim* sim, const std::vector<LaserSensorDescription>& lasers);
 
     void OnUpdate(float deltaTime);
+	void ResetToStartingPose();
 
+    const std::string m_name;
 private:
     const BasicSim* m_sim;
     rclcpp::Node::SharedPtr m_node;
-    std::string m_name;
+    const tf2::Transform m_startingTransform;
     tf2::Transform m_currentTransform;
 
     std::vector<LaserSensor> m_laserScanners;
