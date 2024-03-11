@@ -1,0 +1,14 @@
+---
+BasedOnStyle: Microsoft
+PointerAlignment: Left
+SortIncludes: false
+UseTab: Never
+IndentWidth: 4
+BreakBeforeBraces: Custom
+BraceWrapping:
+  SplitEmptyFunction: false
+AccessModifierOffset: -4
+IndentPPDirectives: None
+ColumnLimit: 150
+NamespaceIndentation: All
+...
