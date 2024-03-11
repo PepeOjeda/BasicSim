@@ -70,7 +70,7 @@ def launch_setup(context, *args, **kwargs):
             prefix = "xterm -e",
             parameters=[
                 {"linear_v_inc": 0.1},
-                {"angular_v_inc": 0.3},
+                {"angular_v_inc": 0.1},
                 {"publish_topic": "/giraff1/cmd_vel"}
                 ],
         )
@@ -80,7 +80,7 @@ def launch_setup(context, *args, **kwargs):
             prefix = "xterm -e",
             parameters=[
                 {"linear_v_inc": 0.1},
-                {"angular_v_inc": 0.3},
+                {"angular_v_inc": 0.1},
                 {"publish_topic": "/giraff2/cmd_vel"}
                 ],
         )

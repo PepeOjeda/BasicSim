@@ -17,7 +17,7 @@ Does not do:
 - Physics.
 - Velocity or acceleration limits.
 - Any sensors other than 2D laser scanners.
-- Robot shapes (always assumed to be point-like). 
+- Robot shapes (always assumed to be a circle of given radius, defaulting to 0). 
 - Robot-robot collision.
 
 ## Configuring a simulation
@@ -30,6 +30,7 @@ robots:
   - name: "giraff1"
     position: [2, 3, 0]
     angle: 1
+    radius: 0.25
     sensors:
       - type: "laser"
         name: "laser_scanner" 

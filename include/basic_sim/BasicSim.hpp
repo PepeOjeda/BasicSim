@@ -5,11 +5,12 @@
 #include <rclcpp/rclcpp.hpp>
 #include <rosgraph_msgs/msg/clock.hpp>
 #include <nav_msgs/msg/occupancy_grid.hpp>
+#include <std_msgs/msg/string.hpp>
 #include <yaml-cpp/yaml.h>
 
 class BasicSim : public rclcpp::Node
 {
-    public:
+public:
     BasicSim();
     void Update();
 
@@ -19,13 +20,14 @@ class BasicSim : public rclcpp::Node
     
     Map map;
     
-    protected:
+protected:
     double deltaTime;
     double speed;
     rclcpp::Time startTime;
     rclcpp::Time currentTime;
     rclcpp::Publisher<rosgraph_msgs::msg::Clock>::SharedPtr clockPub;
     rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr mapPub;
+	rclcpp::Subscription<std_msgs::msg::String>::SharedPtr resetRobotsSub;
     
     // It is important that the vector is only resized once, before creating any robots
     // otherwise, the robots will be moved by the resize operation, and the bound callbacks will continue to use the original address
@@ -35,4 +37,5 @@ class BasicSim : public rclcpp::Node
     void parseFile(std::string& filepath);
     void parseRobot(YAML::Node robotYAML);
     void publishClock();
+	void ResetRobotsToStartingPose(std_msgs::msg::String::SharedPtr msg);
 };

@@ -37,25 +37,31 @@ bool Map::readFile(const std::string& mapYAMLfilepath)
 
         // if the image path is relative interpret it as relative to the YAML, not the working directory
         std::filesystem::path imagePath(yaml["image"].as<std::string>());
-        if(imagePath.is_relative())
-            imagePath = std::filesystem::path(mapYAMLfilepath).parent_path()/imagePath;
+        if (imagePath.is_relative())
+            imagePath = std::filesystem::path(mapYAMLfilepath).parent_path() / imagePath;
 
         cv::Mat mapImage = cv::imread(imagePath, cv::IMREAD_GRAYSCALE);
         width = mapImage.size().width;
         height = mapImage.size().height;
         occupancyGrid.resize(width * height);
+        distanceField.resize(width * height);
+
+        cv::Mat distanceFieldMat;
+        cv::distanceTransform(mapImage, distanceFieldMat, cv::DistanceTypes::DIST_L2, cv::DistanceTransformMasks::DIST_MASK_PRECISE, CV_32F);
+
         for (int y = 0; y < height; y++)
         {
             for (int x = 0; x < width; x++)
             {
-                if (mapImage.at<uint8_t>(y, x) > 255 * (1-occupied_thresh))
+                if (mapImage.at<uint8_t>(y, x) > 255 * (1 - occupied_thresh))
                     occupancyGrid[width * (height - y - 1) + x] = CellState::Free;
                 else
                     occupancyGrid[width * (height - y - 1) + x] = CellState::Occupied;
+                distanceField[width * (height - y - 1) + x] = distanceFieldMat.at<float>(y, x) * resolution;
             }
         }
     }
-    catch(std::exception& e)
+    catch (std::exception& e)
     {
         BS_ERROR("%s", e.what());
         return false;
@@ -64,28 +70,42 @@ bool Map::readFile(const std::string& mapYAMLfilepath)
     return true;
 }
 
-
-
-CellState Map::at(int i, int j) const
+CellState Map::stateAt(int i, int j) const
 {
     int index = i + j * width;
-    if(index <0 || index > occupancyGrid.size())
+    if (index < 0 || index > occupancyGrid.size())
         return CellState::Occupied;
-        
+
     return occupancyGrid[index];
 }
 
-CellState Map::at(const tf2::Vector3& point) const
+CellState Map::stateAt(const tf2::Vector3& point) const
 {
     int i = (point.x() - origin.x()) / resolution;
     int j = (point.y() - origin.y()) / resolution;
-    return at(i, j);
+    return stateAt(i, j);
+}
+
+float Map::distanceAt(int i, int j) const
+{
+    int index = i + j * width;
+    if (index < 0 || index > occupancyGrid.size())
+        return 0;
+
+    return distanceField[index];
+}
+
+float Map::distanceAt(const tf2::Vector3& point) const
+{
+    int i = (point.x() - origin.x()) / resolution;
+    int j = (point.y() - origin.y()) / resolution;
+    return distanceAt(i, j);
 }
 
 nav_msgs::msg::OccupancyGrid Map::asOccupancyGrid() const
 {
     nav_msgs::msg::OccupancyGrid msg;
-    msg.header.frame_id="map";
+    msg.header.frame_id = "map";
     msg.info.height = height;
     msg.info.width = width;
     msg.info.resolution = resolution;
@@ -93,11 +113,9 @@ nav_msgs::msg::OccupancyGrid Map::asOccupancyGrid() const
     msg.info.origin.position.y = origin.y();
     msg.info.origin.position.z = origin.z();
 
-    std::transform(occupancyGrid.cbegin(), occupancyGrid.cend(), std::back_inserter(msg.data),
-               [](CellState a) { return static_cast<int8_t>(a); });
+    std::transform(occupancyGrid.cbegin(), occupancyGrid.cend(), std::back_inserter(msg.data), [](CellState a) { return static_cast<int8_t>(a); });
     return msg;
 }
-
 
 DDA::_2D::Map<CellState> Map::asDDAMap() const
 {
@@ -105,10 +123,10 @@ DDA::_2D::Map<CellState> Map::asDDAMap() const
     DDAMap.origin = DDA::Vector2(origin.x(), origin.y());
     DDAMap.resolution = resolution;
     DDAMap.cells.resize(width, std::vector<CellState>(height));
-    
+
     #pragma omp parallel for collapse(2)
-    for(int i = 0; i<width; i++)
-        for(int j = 0; j<height; j++)
-            DDAMap.cells[i][j] = at(i,j);
+    for (int i = 0; i < width; i++)
+        for (int j = 0; j < height; j++)
+            DDAMap.cells[i][j] = stateAt(i, j);
     return DDAMap;
 }

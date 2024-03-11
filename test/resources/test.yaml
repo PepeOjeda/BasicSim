@@ -1,6 +1,7 @@
 map: "occupancy.yaml"
 robots:
   - name: "giraff1"
+    radius: 0.25
     position: [2, 3, 0]
     angle: 1
     sensors:

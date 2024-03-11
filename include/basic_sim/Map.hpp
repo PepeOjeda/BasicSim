@@ -10,8 +10,14 @@ class Map
 public:
     bool readFile(const std::string& mapYAMLfilepath);
 
-    CellState at(int i, int j) const;
-    CellState at(const tf2::Vector3& point) const;
+    //is the cell occupied or free?
+    CellState stateAt(int i, int j) const;
+    CellState stateAt(const tf2::Vector3& point) const;
+
+    //how close is the cell to the nearest obstacle?
+    float distanceAt(int i, int j) const;
+    float distanceAt(const tf2::Vector3& point) const;
+    
     nav_msgs::msg::OccupancyGrid asOccupancyGrid() const;
     DDA::_2D::Map<CellState> asDDAMap() const;
 
@@ -20,4 +26,5 @@ private:
     double resolution;
     int width, height;
     std::vector<CellState> occupancyGrid;
+    std::vector<float> distanceField;
 };

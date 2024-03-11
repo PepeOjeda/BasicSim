@@ -21,15 +21,18 @@ public:
     Robot() = delete;
     Robot(const Robot&) = delete;
     Robot(Robot&&) = default;
-    Robot(std::string& name, const tf2::Transform& startingPose, const BasicSim* sim, const std::vector<LaserSensorDescription>& lasers);
+    Robot(std::string& name, const tf2::Transform& startingPose, float radius, const BasicSim* sim, const std::vector<LaserSensorDescription>& lasers);
 
     void OnUpdate(float deltaTime);
+	void ResetToStartingPose();
 
+    const std::string m_name;
 private:
     const BasicSim* m_sim;
     rclcpp::Node::SharedPtr m_node;
-    std::string m_name;
+    const tf2::Transform m_startingTransform;
     tf2::Transform m_currentTransform;
+    float m_radius;
 
     std::vector<LaserSensor> m_laserScanners;
 
@@ -43,6 +46,8 @@ private:
     void UpdatePose(float deltaTime);
     void UpdateSensors(float deltaTime);
     std::string getRobotFrameId();
+
+    bool canBeAt(const tf2::Vector3& position) const; 
 
     struct VelocityMsg
     {
