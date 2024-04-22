@@ -45,6 +45,8 @@ sensor_msgs::msg::LaserScan LaserScanner::Scan(const tf2::Vector3& position, con
 
         if (info.hitSomething)
             msg.ranges[i] = info.distance;
+        else
+            msg.ranges[i] = maxDistance + 1; //invalid value, gets interpreted as a miss
     }
 
     return msg;
