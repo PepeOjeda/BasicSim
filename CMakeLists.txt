@@ -1,8 +1,10 @@
 cmake_minimum_required(VERSION 3.8)
 project(basic_sim)
 
-set(CMAKE_BUILD_TYPE "None") 
-set(CMAKE_CXX_FLAGS "-std=c++20 -g -O3 ${CMAKE_CXX_FLAGS}")
+set(CMAKE_BUILD_TYPE "Release") 
+set(CMAKE_CXX_FLAGS_DEBUG "-g -O0 ${CMAKE_CXX_FLAGS}")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 ${CMAKE_CXX_FLAGS}")
+set (CXX_STANDARD 20)
 
 # Dependencies
 find_package(ament_cmake REQUIRED)

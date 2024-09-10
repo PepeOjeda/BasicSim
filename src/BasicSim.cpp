@@ -37,7 +37,7 @@ BasicSim::BasicSim() : Node("basic_sim")
 
 void BasicSim::Update()
 {
-#if 0
+#if 1
     Profiling::ScopedStopwatch stopwatch("MainLoop");
 #endif
 

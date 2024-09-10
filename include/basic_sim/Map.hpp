@@ -2,7 +2,7 @@
 #include <tf2/LinearMath/Vector3.h>
 #include <string> 
 #include <nav_msgs/msg/occupancy_grid.hpp>
-#include <DDA/DDA.h>
+#include <DDA/2D/RayCast.h>
 
 enum CellState : int8_t {Occupied = 100, Free = 0};
 class Map

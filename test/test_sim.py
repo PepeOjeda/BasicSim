@@ -56,6 +56,7 @@ def launch_setup(context, *args, **kwargs):
     basic_sim = Node(
             package="basic_sim",
             executable="basic_sim",
+            name="basic_sim",
             prefix = "xterm -e",
             parameters=[
                 {"deltaTime": 0.1},

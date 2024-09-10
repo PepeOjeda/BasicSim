@@ -20,7 +20,7 @@ namespace Profiling
         {
             auto nanoseconds = (clock.now() - start).count();
             double seconds = nanoseconds / std::pow(10, 9);
-            BS_INFO("%s - Ellapsed: %f", name.c_str(), seconds);
+            BS_INFO("%s - Ellapsed: %fs", name.c_str(), seconds);
         }
 
     private:

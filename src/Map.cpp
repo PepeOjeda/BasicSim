@@ -119,14 +119,11 @@ nav_msgs::msg::OccupancyGrid Map::asOccupancyGrid() const
 
 DDA::_2D::Map<CellState> Map::asDDAMap() const
 {
-    DDA::_2D::Map<CellState> DDAMap;
-    DDAMap.origin = DDA::Vector2(origin.x(), origin.y());
-    DDAMap.resolution = resolution;
-    DDAMap.cells.resize(width, std::vector<CellState>(height));
-
-    #pragma omp parallel for collapse(2)
-    for (int i = 0; i < width; i++)
-        for (int j = 0; j < height; j++)
-            DDAMap.cells[i][j] = stateAt(i, j);
+    DDA::_2D::Map<CellState> DDAMap(
+        occupancyGrid,
+        DDA::Vector2(origin.x(), origin.y()),
+        resolution,
+        DDA::Vector2Int(width, height)
+    );
     return DDAMap;
 }
