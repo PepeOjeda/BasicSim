@@ -20,6 +20,11 @@ Does not do:
 - Robot shapes (always assumed to be a circle of given radius, defaulting to 0). 
 - Robot-robot collision.
 
+## Installation
+Simply clone inside or your colcon workspace's source directory and run `colcon build --symlink-install`.
+
+⚠️ This repo has sub-modules! Remember to clone with the `--recurse-submodules` option, or to run `git submodule update --init --recursive`.
+
 ## Configuring a simulation
 
 The entire configuration consist on creating a `.yaml` file. For example:
