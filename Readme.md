@@ -68,8 +68,8 @@ basic_sim = Node(
             ],
         )
 ```
-- `deltaTime` is the length of each simulation step (in simulation time). That is, for `deltaTime = 0.1s`, if a robot is told to move at `1m/s`, in one simulation step it will move `0.1m`, independently of how long that simulation step takes to run in real time.
+- `deltaTime` is the length of each simulation step (in simulation time). That is, for `deltaTime = 0.1s`, if a robot is told to move at `1m/s`, it will move `0.1m` in one simulation step, independently of how long that simulation step takes to run in real time.
 
-- `speed` is how fast the simulator tries to run, compared to real time. `speed = 1` means one simulation step happens every `deltaTime` seconds. `speed = 10` means it will run 10 faster than real-time. Obviously, at some point processing power becomes a limiting factor (although basicSim is pretty lightweight). 
+- `speed` is how fast the simulator tries to run, compared to real time. `speed = 1` means one simulation step happens every `deltaTime` seconds. `speed = 10` means it will run 10 times faster than real-time. Obviously, at some point processing power becomes a limiting factor (although basicSim is pretty lightweight). 
 
 - `worldfile` is the path to the `yaml` file we looked at in the previous section.
