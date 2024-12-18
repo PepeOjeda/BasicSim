@@ -18,9 +18,15 @@ namespace Profiling
 
         ~ScopedStopwatch()
         {
-            auto nanoseconds = (clock.now() - start).count();
-            double seconds = nanoseconds / std::pow(10, 9);
+            double seconds = ellapsed();
             BS_INFO("%s - Ellapsed: %fs", name.c_str(), seconds);
+        }
+
+        double ellapsed()
+        {
+            auto nanoseconds = (clock.now() - start).count();
+            double seconds = nanoseconds / 10e9;
+            return seconds;
         }
 
     private:

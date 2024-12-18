@@ -121,7 +121,7 @@ void BasicSim::parseRobot(YAML::Node robotYAML)
         std::vector<LaserSensorDescription> lasersList;
 
         float radius = 0;
-        if(robotYAML["radius"])
+        if (robotYAML["radius"])
             radius = robotYAML["radius"].as<float>();
 
         for (YAML::Node sensor : sensorsListYAML)
