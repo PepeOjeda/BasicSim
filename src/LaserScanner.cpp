@@ -1,3 +1,4 @@
+#include "basic_sim/Logging.hpp"
 #include <basic_sim/LaserScanner.hpp>
 
 LaserScanner::LaserScanner(float _minAngleRad, float _maxAngleRad, float _minDistance, float _maxDistance, float _angleResolutionRad, const Map* map)
@@ -8,6 +9,7 @@ LaserScanner::LaserScanner(float _minAngleRad, float _maxAngleRad, float _minDis
         maxAngleRad += 2 * M_PI;
 
     DDA_map = map->asDDAMap();
+    DDA::loggingEnabled = false;
 }
 
 LaserScanner::LaserScanner(const LaserSensorDescription& desc, const Map* map)
@@ -18,6 +20,7 @@ LaserScanner::LaserScanner(const LaserSensorDescription& desc, const Map* map)
         maxAngleRad += 2 * M_PI;
 
     DDA_map = map->asDDAMap();
+    DDA::loggingEnabled = false;
 }
 
 sensor_msgs::msg::LaserScan LaserScanner::Scan(const tf2::Vector3& position, const tf2::Vector3& forwardDirectionTF)
@@ -36,18 +39,26 @@ sensor_msgs::msg::LaserScan LaserScanner::Scan(const tf2::Vector3& position, con
     DDA::Vector2 start(position.x(), position.y());
     DDA::Vector2 forward(forwardDirectionTF.x(), forwardDirectionTF.y());
 
-    #pragma omp parallel for
+    bool invalidReading = false;
+
+#pragma omp parallel for
     for (int i = 0; i < numberOfMeasurements; i++)
     {
         float angle = minAngleRad + i * angleResolutionRad;
         DDA::_2D::RayCastInfo info =
             DDA::_2D::castRay<CellState>(start, forward.rotate(angle), maxDistance, DDA_map, [](CellState c) { return c == CellState::Free; });
 
+        if (info.invalid())
+            invalidReading = true;
+
         if (info.hitSomething)
             msg.ranges[i] = info.distance;
         else
-            msg.ranges[i] = maxDistance + 1; //invalid value, gets interpreted as a miss
+            msg.ranges[i] = maxDistance + 1; // invalid value, gets interpreted as a miss
     }
 
+    if (invalidReading)
+        BS_ERROR("At least one invalid reading when simulating laser scanner!");
+    
     return msg;
 }

@@ -40,7 +40,17 @@ bool Map::readFile(const std::string& mapYAMLfilepath)
         if (imagePath.is_relative())
             imagePath = std::filesystem::path(mapYAMLfilepath).parent_path() / imagePath;
 
+        BS_INFO("Loading map from '%s'", imagePath.c_str());
+        BS_INFO("Resolution: %.2f", resolution);
+        BS_INFO("Origin: (%.2f, %.2f, %.2f)", origin.x(), origin.y(), origin.z());
+
         cv::Mat mapImage = cv::imread(imagePath, cv::IMREAD_GRAYSCALE);
+        if (mapImage.data == nullptr)
+        {
+            BS_ERROR("Map file '%s' could not be read!", imagePath.c_str());
+            return false; 
+        }
+
         width = mapImage.size().width;
         height = mapImage.size().height;
         occupancyGrid.resize(width * height);
@@ -119,11 +129,6 @@ nav_msgs::msg::OccupancyGrid Map::asOccupancyGrid() const
 
 DDA::_2D::Map<CellState> Map::asDDAMap() const
 {
-    DDA::_2D::Map<CellState> DDAMap(
-        occupancyGrid,
-        DDA::Vector2(origin.x(), origin.y()),
-        resolution,
-        DDA::Vector2Int(width, height)
-    );
+    DDA::_2D::Map<CellState> DDAMap(occupancyGrid, DDA::Vector2(origin.x(), origin.y()), resolution, DDA::Vector2Int(width, height));
     return DDAMap;
 }
