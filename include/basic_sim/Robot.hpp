@@ -1,13 +1,13 @@
 #pragma once
-#include <rclcpp/rclcpp.hpp>
-#include <nav_msgs/msg/odometry.hpp>
-#include <geometry_msgs/msg/twist.hpp>
-#include <geometry_msgs/msg/transform_stamped.hpp>
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
+#include <geometry_msgs/msg/transform_stamped.hpp>
+#include <geometry_msgs/msg/twist.hpp>
+#include <nav_msgs/msg/odometry.hpp>
+#include <rclcpp/rclcpp.hpp>
 
+#include <tf2/LinearMath/Transform.h>
 #include <tf2_ros/static_transform_broadcaster.h>
 #include <tf2_ros/transform_broadcaster.h>
-#include <tf2/LinearMath/Transform.h>
 
 #include <basic_sim/LaserScanner.hpp>
 
@@ -15,24 +15,37 @@ class BasicSim;
 
 namespace geo = geometry_msgs::msg;
 
+struct RobotDescription
+{
+    const std::string& name;
+    const tf2::Transform& startingPose;
+    float radius;
+    const BasicSim* sim;
+    const std::vector<LaserSensorDescription>& lasers;
+    bool publishOdom;
+};
+
 class Robot
 {
 public:
     Robot() = delete;
     Robot(const Robot&) = delete;
     Robot(Robot&&) = default;
-    Robot(std::string& name, const tf2::Transform& startingPose, float radius, const BasicSim* sim, const std::vector<LaserSensorDescription>& lasers);
+    Robot(const RobotDescription& description);
 
     void OnUpdate(float deltaTime);
-	void ResetToStartingPose();
+    void ResetToStartingPose();
 
     const std::string m_name;
+
 private:
     const BasicSim* m_sim;
     rclcpp::Node::SharedPtr m_node;
     const tf2::Transform m_startingTransform;
-    tf2::Transform m_currentTransform;
+    tf2::Transform m_currentTransformMapFrame;
+    tf2::Transform m_mapToOdom; // for turning map frame pose into odom frame pose
     float m_radius;
+    bool publishOdom;
 
     std::vector<LaserSensor> m_laserScanners;
 
@@ -45,9 +58,10 @@ private:
 
     void UpdatePose(float deltaTime);
     void UpdateSensors(float deltaTime);
+    void PublishPoseAndOdom(tf2::Transform movement, float deltaTime);
     std::string getRobotFrameId();
 
-    bool canBeAt(const tf2::Vector3& position) const; 
+    bool canBeAt(const tf2::Vector3& position) const;
 
     struct VelocityMsg
     {

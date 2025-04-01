@@ -121,8 +121,12 @@ void BasicSim::parseRobot(YAML::Node robotYAML)
         std::vector<LaserSensorDescription> lasersList;
 
         float radius = 0;
-        if (robotYAML["radius"])
+        if(robotYAML["radius"])
             radius = robotYAML["radius"].as<float>();
+
+        bool publishOdom = true;
+        if(robotYAML["publishOdom"])
+            publishOdom = robotYAML["publishOdom"].as<bool>();
 
         for (YAML::Node sensor : sensorsListYAML)
         {
@@ -141,7 +145,16 @@ void BasicSim::parseRobot(YAML::Node robotYAML)
             laser.maxDistance = sensor["maxDistance"].as<float>();
         }
 
-        robots.emplace_back(name, initialPose, radius, this, lasersList);
+        RobotDescription desc
+        {
+            .name = name,
+            .startingPose = initialPose,
+            .radius = radius,
+            .sim = this,
+            .lasers = lasersList,
+            .publishOdom = publishOdom
+        };
+        robots.emplace_back(desc);
     }
     catch (std::exception& e)
     {

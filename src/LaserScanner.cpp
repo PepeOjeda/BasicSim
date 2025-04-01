@@ -46,7 +46,10 @@ sensor_msgs::msg::LaserScan LaserScanner::Scan(const tf2::Vector3& position, con
     {
         float angle = minAngleRad + i * angleResolutionRad;
         DDA::_2D::RayCastInfo info =
-            DDA::_2D::castRay<CellState>(start, forward.rotate(angle), maxDistance, DDA_map, [](CellState c) { return c == CellState::Free; });
+            DDA::_2D::castRay<CellState>(start, forward.rotate(angle), maxDistance, DDA_map, [](CellState c)
+                                         {
+                                             return c == CellState::Free;
+                                         });
 
         if (info.invalid())
             invalidReading = true;
@@ -59,6 +62,6 @@ sensor_msgs::msg::LaserScan LaserScanner::Scan(const tf2::Vector3& position, con
 
     if (invalidReading)
         BS_ERROR("At least one invalid reading when simulating laser scanner!");
-    
+
     return msg;
 }
