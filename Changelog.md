@@ -1,3 +1,6 @@
+# 1.2.0
+Changed the odometry behaviour to be consistent with the ROS standard. The origin of the odom frame is now at the initial position of the robot, and all odometry information is relative to that frame.
+
 # 1.1.1
 Fixed the laser scanner readings for rays that leave the occupancy map.
 

@@ -1,13 +1,18 @@
-#include <basic_sim/Robot.hpp>
-#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
+#include "basic_sim/Utils.hpp"
 #include <basic_sim/BasicSim.hpp>
 #include <basic_sim/Logging.hpp>
+#include <basic_sim/Robot.hpp>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
-Robot::Robot(std::string& name, const tf2::Transform& startingPose, float radius, const BasicSim* sim,
-             const std::vector<LaserSensorDescription>& lasers)
-    : m_name(name), m_currentTransform(startingPose), m_startingTransform(startingPose), m_radius(radius), m_sim(sim)
+Robot::Robot(const RobotDescription& description)
+    : m_name(description.name),
+      m_currentTransformMapFrame(description.startingPose),
+      m_startingTransform(description.startingPose),
+      m_radius(description.radius),
+      publishOdom(description.publishOdom),
+      m_sim(description.sim)
 {
-    m_node = std::make_shared<rclcpp::Node>(name);
+    m_node = std::make_shared<rclcpp::Node>(description.name);
 
     std::string cmd_vel_topic = "/" + m_name + "/cmd_vel";
     m_cmd_velSub = m_node->create_subscription<geo::Twist>(cmd_vel_topic, 1, std::bind(&Robot::cmd_velCallback, this, std::placeholders::_1));
@@ -16,22 +21,27 @@ Robot::Robot(std::string& name, const tf2::Transform& startingPose, float radius
     m_posePub = m_node->create_publisher<geo::PoseWithCovarianceStamped>("/" + m_name + "/ground_truth", rclcpp::QoS(5));
     m_resetPoseSub = m_node->create_subscription<geo::PoseWithCovarianceStamped>("/" + m_name + "/initialpose", rclcpp::QoS(1),
                                                                                  std::bind(&Robot::resetPoseCallback, this, std::placeholders::_1));
-    m_odomPub = m_node->create_publisher<nav_msgs::msg::Odometry>("/" + m_name + "/odom", rclcpp::QoS(1));
 
-    // publish static map_odom TF (published only once)
+    if (publishOdom)
+    {
+        m_odomPub = m_node->create_publisher<nav_msgs::msg::Odometry>("/" + m_name + "/odom", rclcpp::QoS(1));
 
-    // TODO Right now the odom frame is perfectly aligned with the map frame. This is fine, since we don't actually need to do anything with it
-    //  however, it might be nice to do the standard ROS thing and place the origin of odom at the robot's initial pose
-    //  if we make this change, we need to modify the message that is published to the odom topic in UpdatePose() accordingly
-    m_odomGroundTruthBroadcaster = std::make_shared<tf2_ros::StaticTransformBroadcaster>(m_node);
-    geo::TransformStamped mapToOdom;
-    mapToOdom.header.frame_id = "map";
-    mapToOdom.child_frame_id = m_name + "_odom";
-    m_odomGroundTruthBroadcaster->sendTransform(mapToOdom);
+        // publish static map_odom TF (published only once)
+
+        //  however, it might be nice to do the standard ROS thing and place the origin of odom at the robot's initial pose
+        //  if we make this change, we need to modify the message that is published to the odom topic in UpdatePose() accordingly
+        m_odomGroundTruthBroadcaster = std::make_shared<tf2_ros::StaticTransformBroadcaster>(m_node);
+        geo::TransformStamped mapToOdom;
+        mapToOdom.header.frame_id = "map";
+        mapToOdom.child_frame_id = m_name + "_odom";
+        mapToOdom.transform = tf2::toMsg(m_currentTransformMapFrame);
+        m_odomGroundTruthBroadcaster->sendTransform(mapToOdom);
+        m_mapToOdom = m_currentTransformMapFrame.inverse();
+    }
 
     // create the sensors specified in the YAML
-    m_laserScanners.reserve(lasers.size());
-    for (const auto& laserDesc : lasers)
+    m_laserScanners.reserve(description.lasers.size());
+    for (const auto& laserDesc : description.lasers)
     {
         LaserSensor& sensor = m_laserScanners.emplace_back(laserDesc, &m_sim->map);
         sensor.publisher = m_node->create_publisher<sensor_msgs::msg::LaserScan>(m_name + "/" + laserDesc.name, rclcpp::QoS(1));
@@ -54,60 +64,79 @@ void Robot::UpdatePose(float deltaTime)
     if (m_sim->getCurrentTime().seconds() - m_currentVelocityMsg.simTimeStamp.seconds() > 0.5)
         m_currentVelocityMsg.Reset();
 
-    tf2::Transform nextTransform;
     // we are applying rotation first, displacement later
     // not calculating the arc from applying both simultaneously, because deltaTime is very small
     tf2::Quaternion rotation({0, 0, 1}, m_currentVelocityMsg.twist.angular.z * deltaTime);
     tf2::Vector3 linearMovement;
     tf2::fromMsg(m_currentVelocityMsg.twist.linear, linearMovement);
     linearMovement *= deltaTime;
-    tf2::Transform movement(rotation, tf2::quatRotate(rotation, linearMovement));
+    tf2::Transform movement(rotation, linearMovement);
 
-    nextTransform.mult(m_currentTransform, movement);
+    tf2::Transform nextTransform;
+    nextTransform.mult(m_currentTransformMapFrame, movement);
 
+    // apply the movement if possible
     if (canBeAt(nextTransform.getOrigin()))
-        m_currentTransform = nextTransform;
+        m_currentTransformMapFrame = nextTransform;
+    else
+    {
+        movement.getOrigin().setZero();
+        movement.getBasis().setIdentity();
+    }
 
-    // send TF
-    geo::TransformStamped odomToBase;
-    odomToBase.header.frame_id = m_name + "_odom";
-    odomToBase.header.stamp = m_sim->getCurrentTime();
-    odomToBase.child_frame_id = getRobotFrameId();
-    odomToBase.transform = tf2::toMsg(m_currentTransform);
-    m_robotBaseBroadcaster->sendTransform(odomToBase);
-
-    // publish PoseWithCovarianceStamped msg to /(robot)/ground_truth
-    geo::PoseWithCovarianceStamped poseMsg;
-    poseMsg.header.frame_id = "map";
-    poseMsg.header.stamp = m_sim->getCurrentTime();
-    poseMsg.pose.pose.position.x = odomToBase.transform.translation.x;
-    poseMsg.pose.pose.position.y = odomToBase.transform.translation.y;
-    poseMsg.pose.pose.position.z = odomToBase.transform.translation.z;
-    poseMsg.pose.pose.orientation = odomToBase.transform.rotation;
-    m_posePub->publish(poseMsg);
-
-    // publish Odometry msg
-    nav_msgs::msg::Odometry odomMsg;
-    odomMsg.header.frame_id = m_name + "_odom";
-    odomMsg.header.stamp = m_sim->getCurrentTime();
-    odomMsg.child_frame_id = getRobotFrameId();
-    odomMsg.pose = poseMsg.pose; // TODO this only works because map and odom are the same frame! If we change the odom frame we will need to
-                                 // transform the (map frame) pose to it before sending
-    odomMsg.twist.twist = m_currentVelocityMsg.twist;
-    m_odomPub->publish(odomMsg);
+    PublishPoseAndOdom(movement, deltaTime);
 }
 
 void Robot::UpdateSensors(float deltaTime)
 {
     for (LaserSensor& sensor : m_laserScanners)
     {
-        tf2::Vector3 forward = tf2::quatRotate(m_currentTransform.getRotation(), {1, 0, 0});
-        auto msg = sensor.scanner.Scan(m_currentTransform.getOrigin(), forward);
+        tf2::Vector3 forward = tf2::quatRotate(m_currentTransformMapFrame.getRotation(), {1, 0, 0});
+        auto msg = sensor.scanner.Scan(m_currentTransformMapFrame.getOrigin(), forward);
 
         msg.header.frame_id = sensor.frame_id;
         msg.header.stamp = m_sim->getCurrentTime();
         msg.scan_time = deltaTime;
         sensor.publisher->publish(msg);
+    }
+}
+
+void Robot::PublishPoseAndOdom(tf2::Transform movement, float deltaTime)
+{
+    // publish PoseWithCovarianceStamped msg to /(robot)/ground_truth
+    geo::PoseWithCovarianceStamped poseMsg;
+    poseMsg.header.frame_id = "map";
+    poseMsg.header.stamp = m_sim->getCurrentTime();
+    poseMsg.pose.pose.position.x = m_currentTransformMapFrame.getOrigin().x();
+    poseMsg.pose.pose.position.y = m_currentTransformMapFrame.getOrigin().y();
+    poseMsg.pose.pose.position.z = m_currentTransformMapFrame.getOrigin().z();
+    poseMsg.pose.pose.orientation = tf2::toMsg(m_currentTransformMapFrame.getRotation());
+    m_posePub->publish(poseMsg);
+
+    if (publishOdom)
+    {
+        tf2::Transform poseInOdomFrame;
+        poseInOdomFrame.mult(m_mapToOdom, m_currentTransformMapFrame);
+
+        // send odom->base TF
+        geo::TransformStamped odomToBase;
+        odomToBase.header.frame_id = m_name + "_odom";
+        odomToBase.header.stamp = m_sim->getCurrentTime();
+        odomToBase.child_frame_id = getRobotFrameId();
+        odomToBase.transform = tf2::toMsg(poseInOdomFrame);
+        m_robotBaseBroadcaster->sendTransform(odomToBase);
+
+        // publish Odometry msg
+        //--------------------
+        nav_msgs::msg::Odometry odomMsg;
+        odomMsg.header.frame_id = m_name + "_odom";
+        odomMsg.header.stamp = m_sim->getCurrentTime();
+        odomMsg.pose.pose = Utils::transformToPose(odomToBase.transform);
+        // the velocity is in the robot base frame, not in odom
+        odomMsg.child_frame_id = getRobotFrameId();
+        odomMsg.twist.twist.linear = tf2::toMsg(movement.getOrigin() / deltaTime);
+        odomMsg.twist.twist.angular.z = movement.getRotation().getAngle() / deltaTime;
+        m_odomPub->publish(odomMsg);
     }
 }
 
@@ -122,13 +151,13 @@ void Robot::resetPoseCallback(geo::PoseWithCovarianceStamped::SharedPtr msg)
 // this
 #define IGNORE_MSG_Z 1
 #if IGNORE_MSG_Z
-    tf2::Vector3 position = {msg->pose.pose.position.x, msg->pose.pose.position.y, m_currentTransform.getOrigin().z()};
+    tf2::Vector3 position = {msg->pose.pose.position.x, msg->pose.pose.position.y, m_currentTransformMapFrame.getOrigin().z()};
 #else
     tf2::Vector3 position = {msg->pose.pose.position.x, msg->pose.pose.position.y, msg->pose.pose.position.z};
 #endif
     CellState cellState = m_sim->map.stateAt(position);
     if (cellState == CellState::Free)
-        m_currentTransform.setOrigin(position);
+        m_currentTransformMapFrame.setOrigin(position);
     else
         BS_ERROR("Trying to set robot %s to position (%.2f, %.2f, %.2f), but it is not free!", m_name.c_str(), position.x(), position.y(),
                  position.z());
@@ -137,7 +166,7 @@ void Robot::resetPoseCallback(geo::PoseWithCovarianceStamped::SharedPtr msg)
 void Robot::ResetToStartingPose()
 {
     BS_INFO("Reset robot %s to starting position.", m_name.c_str());
-    m_currentTransform = m_startingTransform;
+    m_currentTransformMapFrame = m_startingTransform;
     m_currentVelocityMsg.Reset();
 }
 
