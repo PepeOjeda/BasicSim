@@ -1,23 +1,14 @@
 #include "basic_sim/Logging.hpp"
+#include "basic_sim/Utils.hpp"
 #include <basic_sim/LaserScanner.hpp>
 
-LaserScanner::LaserScanner(float _minAngleRad, float _maxAngleRad, float _minDistance, float _maxDistance, float _angleResolutionRad, const Map* map)
-    : minAngleRad(_minAngleRad), maxAngleRad(_maxAngleRad), minDistance(_minDistance), maxDistance(_maxDistance),
-      angleResolutionRad(_angleResolutionRad)
-{
-    while (minAngleRad > maxAngleRad)
-        maxAngleRad += 2 * M_PI;
-
-    DDA_map = map->asDDAMap();
-    DDA::loggingEnabled = false;
-}
+static thread_local Utils::PrecalculatedGaussian<2500> randomNumbers;
 
 LaserScanner::LaserScanner(const LaserSensorDescription& desc, const Map* map)
-    : minAngleRad(desc.minAngleRad), maxAngleRad(desc.maxAngleRad), minDistance(desc.minDistance), maxDistance(desc.maxDistance),
-      angleResolutionRad(desc.angleResolutionRad)
+    : description(desc)
 {
-    while (minAngleRad > maxAngleRad)
-        maxAngleRad += 2 * M_PI;
+    while (description.minAngleRad > description.maxAngleRad)
+        description.maxAngleRad += 2 * M_PI;
 
     DDA_map = map->asDDAMap();
     DDA::loggingEnabled = false;
@@ -25,15 +16,15 @@ LaserScanner::LaserScanner(const LaserSensorDescription& desc, const Map* map)
 
 sensor_msgs::msg::LaserScan LaserScanner::Scan(const tf2::Vector3& position, const tf2::Vector3& forwardDirectionTF)
 {
-    int numberOfMeasurements = (maxAngleRad - minAngleRad) / angleResolutionRad;
+    int numberOfMeasurements = (description.maxAngleRad - description.minAngleRad) / description.angleResolutionRad;
 
     sensor_msgs::msg::LaserScan msg;
-    msg.angle_min = minAngleRad;
-    msg.angle_max = maxAngleRad;
-    msg.angle_increment = angleResolutionRad;
+    msg.angle_min = description.minAngleRad;
+    msg.angle_max = description.maxAngleRad;
+    msg.angle_increment = description.angleResolutionRad;
     msg.time_increment = 0;
-    msg.range_min = minDistance;
-    msg.range_max = maxDistance;
+    msg.range_min = description.minDistance;
+    msg.range_max = description.maxDistance;
     msg.ranges.resize(numberOfMeasurements, 0);
 
     DDA::Vector2 start(position.x(), position.y());
@@ -44,9 +35,9 @@ sensor_msgs::msg::LaserScan LaserScanner::Scan(const tf2::Vector3& position, con
 #pragma omp parallel for
     for (int i = 0; i < numberOfMeasurements; i++)
     {
-        float angle = minAngleRad + i * angleResolutionRad;
+        float angle = description.minAngleRad + i * description.angleResolutionRad;
         DDA::_2D::RayCastInfo info =
-            DDA::_2D::castRay<CellState>(start, forward.rotate(angle), maxDistance, DDA_map, [](CellState c)
+            DDA::_2D::castRay<CellState>(start, forward.rotate(angle), description.maxDistance, DDA_map, [](CellState c)
                                          {
                                              return c == CellState::Free;
                                          });
@@ -55,9 +46,9 @@ sensor_msgs::msg::LaserScan LaserScanner::Scan(const tf2::Vector3& position, con
             invalidReading = true;
 
         if (info.hitSomething)
-            msg.ranges[i] = info.distance;
+            msg.ranges[i] = std::clamp(info.distance + randomNumbers.nextValue(0, description.noiseStdDev), description.minDistance, description.maxDistance);
         else
-            msg.ranges[i] = maxDistance + 1; // invalid value, gets interpreted as a miss
+            msg.ranges[i] = description.maxDistance + 1; // invalid value, gets interpreted as a miss
     }
 
     if (invalidReading)

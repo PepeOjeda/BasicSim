@@ -1,6 +1,6 @@
-#include <basic_sim/Logging.hpp>
 #include <basic_sim/BasicSim.hpp>
 #include <basic_sim/ConvertYAML.hpp>
+#include <basic_sim/Logging.hpp>
 #include <basic_sim/Profiling/ScopedStopwatch.hpp>
 #include <filesystem>
 
@@ -20,7 +20,8 @@ int main(int argc, char** argv)
     return 0;
 }
 
-BasicSim::BasicSim() : Node("basic_sim")
+BasicSim::BasicSim()
+    : Node("basic_sim")
 {
     clockPub = create_publisher<rosgraph_msgs::msg::Clock>("/clock", rclcpp::QoS(1).best_effort());
     mapPub = create_publisher<nav_msgs::msg::OccupancyGrid>("/basic_sim/map", rclcpp::QoS(1).transient_local());
@@ -58,7 +59,8 @@ void BasicSim::publishClock()
 
 void BasicSim::parseFile(std::string& filepath)
 {
-    auto fail = [] {
+    auto fail = []
+    {
         rclcpp::shutdown();
         exit(-1);
     };
@@ -121,11 +123,11 @@ void BasicSim::parseRobot(YAML::Node robotYAML)
         std::vector<LaserSensorDescription> lasersList;
 
         float radius = 0;
-        if(robotYAML["radius"])
+        if (robotYAML["radius"])
             radius = robotYAML["radius"].as<float>();
 
         bool publishOdom = true;
-        if(robotYAML["publishOdom"])
+        if (robotYAML["publishOdom"])
             publishOdom = robotYAML["publishOdom"].as<bool>();
 
         for (YAML::Node sensor : sensorsListYAML)
@@ -143,17 +145,17 @@ void BasicSim::parseRobot(YAML::Node robotYAML)
             laser.angleResolutionRad = sensor["angleResolutionRad"].as<float>();
             laser.minDistance = sensor["minDistance"].as<float>();
             laser.maxDistance = sensor["maxDistance"].as<float>();
+            if (sensor["noiseStdDev"])
+                laser.noiseStdDev = sensor["noiseStdDev"].as<float>();
         }
 
-        RobotDescription desc
-        {
+        RobotDescription desc{
             .name = name,
             .startingPose = initialPose,
             .radius = radius,
             .sim = this,
             .lasers = lasersList,
-            .publishOdom = publishOdom
-        };
+            .publishOdom = publishOdom};
         robots.emplace_back(desc);
     }
     catch (std::exception& e)

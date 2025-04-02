@@ -12,6 +12,7 @@ robots:
         angleResolutionRad: 0.01 
         minDistance: 0.1
         maxDistance: 4.0
+        noiseStdDev: 0.005
 
   - name: "giraff2"
     position: [3, 6, 0]

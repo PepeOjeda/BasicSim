@@ -25,19 +25,16 @@ Robot::Robot(const RobotDescription& description)
     if (publishOdom)
     {
         m_odomPub = m_node->create_publisher<nav_msgs::msg::Odometry>("/" + m_name + "/odom", rclcpp::QoS(1));
-
-        // publish static map_odom TF (published only once)
-
-        //  however, it might be nice to do the standard ROS thing and place the origin of odom at the robot's initial pose
-        //  if we make this change, we need to modify the message that is published to the odom topic in UpdatePose() accordingly
-        m_odomGroundTruthBroadcaster = std::make_shared<tf2_ros::StaticTransformBroadcaster>(m_node);
-        geo::TransformStamped mapToOdom;
-        mapToOdom.header.frame_id = "map";
-        mapToOdom.child_frame_id = m_name + "_odom";
-        mapToOdom.transform = tf2::toMsg(m_currentTransformMapFrame);
-        m_odomGroundTruthBroadcaster->sendTransform(mapToOdom);
         m_mapToOdom = m_currentTransformMapFrame.inverse();
     }
+
+    // publish static map_odom TF (published only once)
+    m_mapOdomBroadcaster = std::make_shared<tf2_ros::StaticTransformBroadcaster>(m_node);
+    geo::TransformStamped mapToOdom;
+    mapToOdom.header.frame_id = "map";
+    mapToOdom.child_frame_id = m_name + "_odom";
+    mapToOdom.transform = tf2::toMsg(m_currentTransformMapFrame);
+    m_mapOdomBroadcaster->sendTransform(mapToOdom);
 
     // create the sensors specified in the YAML
     m_laserScanners.reserve(description.lasers.size());

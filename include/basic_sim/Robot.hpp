@@ -51,7 +51,7 @@ private:
 
     rclcpp::Subscription<geo::Twist>::SharedPtr m_cmd_velSub;
     rclcpp::Subscription<geo::PoseWithCovarianceStamped>::SharedPtr m_resetPoseSub;
-    std::shared_ptr<tf2_ros::StaticTransformBroadcaster> m_odomGroundTruthBroadcaster;
+    std::shared_ptr<tf2_ros::StaticTransformBroadcaster> m_mapOdomBroadcaster;
     std::shared_ptr<tf2_ros::TransformBroadcaster> m_robotBaseBroadcaster;
     rclcpp::Publisher<geo::PoseWithCovarianceStamped>::SharedPtr m_posePub;
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr m_odomPub;
