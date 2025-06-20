@@ -41,19 +41,24 @@ void BasicSim::Update()
 #if 0
     Profiling::ScopedStopwatch stopwatch("MainLoop");
 #endif
-
+    updateTime();
+    
     for (Robot& robot : robots)
         robot.OnUpdate(deltaTime);
 
     publishClock();
 }
 
+void BasicSim::updateTime()
+{
+    rclcpp::Duration ellapsed = (now() - startTime);
+    currentTime = rclcpp::Time{(int64_t)(speed * ellapsed.nanoseconds())};
+}
+
 void BasicSim::publishClock()
 {
     rosgraph_msgs::msg::Clock msg;
-    rclcpp::Duration ellapsed = (now() - startTime);
-    msg.clock = rclcpp::Time{(int64_t)(speed * ellapsed.nanoseconds())};
-    currentTime = msg.clock;
+    msg.clock = currentTime;
     clockPub->publish(msg);
 }
 
