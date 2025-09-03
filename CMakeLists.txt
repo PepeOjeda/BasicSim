@@ -9,24 +9,12 @@ set(CMAKE_CXX_STANDARD 20)
 
 # Dependencies
 find_package(ament_cmake REQUIRED)
+find_package(ament_cmake_auto REQUIRED)
+
 find_package(OpenCV REQUIRED)
 find_package(OpenMP REQUIRED)
-
-set(AMENT_DEPS
-    rclcpp
-    tf2_ros
-    tf2_geometry_msgs
-    nav_msgs
-    sensor_msgs
-    yaml_cpp_vendor
-    )
-
-foreach(Dependency IN ITEMS ${AMENT_DEPS})
-  find_package(${Dependency} REQUIRED)
-endforeach()
-
-
-
+find_package(yaml-cpp)
+ament_auto_find_build_dependencies()
 
 #Target
 include_directories(
@@ -34,19 +22,17 @@ include_directories(
     third_party/DDA/include
     )
 
-add_executable(basic_sim 
-src/BasicSim.cpp
-src/Map.cpp
-src/Robot.cpp
-src/LaserScanner.cpp
+ament_auto_add_executable(basic_sim 
+    src/BasicSim.cpp
+    src/Map.cpp
+    src/Robot.cpp
+    src/LaserScanner.cpp
 )
 
-ament_target_dependencies(basic_sim
-${AMENT_DEPS})
-
 target_link_libraries(basic_sim 
-${OpenCV_LIBS}
-OpenMP::OpenMP_CXX)
+    ${OpenCV_LIBS}
+    OpenMP::OpenMP_CXX
+    yaml-cpp::yaml-cpp)
 
 
 # Install
