@@ -61,13 +61,27 @@ void Robot::UpdatePose(float deltaTime)
     if (m_sim->getCurrentTime().seconds() - m_currentVelocityMsg.simTimeStamp.seconds() > 0.5)
         m_currentVelocityMsg.Reset();
 
-    // we are applying rotation first, displacement later
-    // not calculating the arc from applying both simultaneously, because deltaTime is very small
-    tf2::Quaternion rotation({0, 0, 1}, m_currentVelocityMsg.twist.angular.z * deltaTime);
-    tf2::Vector3 linearMovement;
-    tf2::fromMsg(m_currentVelocityMsg.twist.linear, linearMovement);
-    linearMovement *= deltaTime;
-    tf2::Transform movement(rotation, linearMovement);
+    // calculate and apply the movement
+    float angularSpeed = m_currentVelocityMsg.twist.angular.z;
+    float deltaAngle = angularSpeed * deltaTime;
+
+    // get the translation
+    tf2::Vector3 translation;
+    {
+        tf2::Vector3 linearMovementVelocity;
+        tf2::fromMsg(m_currentVelocityMsg.twist.linear, linearMovementVelocity);
+
+        if (deltaAngle > 0)
+        {
+            float curvatureRadius = linearMovementVelocity.length() / angularSpeed;
+            translation = tf2::Vector3(curvatureRadius * std::sin(deltaAngle), curvatureRadius * (1 - std::cos(deltaAngle)), 0);
+        }
+        else
+            translation = linearMovementVelocity * deltaTime;
+    }
+
+    tf2::Quaternion rotation({0, 0, 1}, deltaAngle);
+    tf2::Transform movement(rotation, translation);
 
     tf2::Transform nextTransform;
     nextTransform.mult(m_currentTransformMapFrame, movement);
