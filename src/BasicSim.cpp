@@ -38,7 +38,7 @@ BasicSim::BasicSim()
 
 void BasicSim::Update()
 {
-#if 0
+#if 1
     Profiling::ScopedStopwatch stopwatch("MainLoop");
 #endif
     updateTime();
@@ -126,6 +126,7 @@ void BasicSim::parseRobot(YAML::Node robotYAML)
         YAML::Node sensorsListYAML = robotYAML["sensors"];
 
         std::vector<LaserSensorDescription> lasersList;
+        BS_INFO("YAML:\n %s", YAML::Dump(robotYAML).c_str());
 
         float radius = 0;
         if (robotYAML["radius"])
@@ -134,6 +135,12 @@ void BasicSim::parseRobot(YAML::Node robotYAML)
         bool publishOdom = true;
         if (robotYAML["publishOdom"])
             publishOdom = robotYAML["publishOdom"].as<bool>();
+
+        bool publishMapToOdomTF = true;
+        if (robotYAML["publishMapToOdomTF"])
+            publishMapToOdomTF = robotYAML["publishMapToOdomTF"].as<bool>();
+
+
 
         for (YAML::Node sensor : sensorsListYAML)
         {
@@ -160,7 +167,8 @@ void BasicSim::parseRobot(YAML::Node robotYAML)
             .radius = radius,
             .sim = this,
             .lasers = lasersList,
-            .publishOdom = publishOdom};
+            .publishOdom = publishOdom,
+            .publishMapToOdomTF = publishMapToOdomTF};
         robots.emplace_back(desc);
     }
     catch (std::exception& e)

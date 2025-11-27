@@ -23,6 +23,7 @@ struct RobotDescription
     const BasicSim* sim;
     const std::vector<LaserSensorDescription>& lasers;
     bool publishOdom;
+    bool publishMapToOdomTF;
 };
 
 class Robot
@@ -46,6 +47,7 @@ private:
     tf2::Transform m_mapToOdom; // for turning map frame pose into odom frame pose
     float m_radius;
     bool publishOdom;
+    bool publishMapToOdomTF;
 
     std::vector<LaserSensor> m_laserScanners;
 

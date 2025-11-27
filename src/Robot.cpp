@@ -10,6 +10,7 @@ Robot::Robot(const RobotDescription& description)
       m_startingTransform(description.startingPose),
       m_radius(description.radius),
       publishOdom(description.publishOdom),
+      publishMapToOdomTF(description.publishMapToOdomTF),
       m_sim(description.sim)
 {
     m_node = std::make_shared<rclcpp::Node>(description.name);
@@ -29,12 +30,15 @@ Robot::Robot(const RobotDescription& description)
     }
 
     // publish static map_odom TF (published only once)
-    m_mapOdomBroadcaster = std::make_shared<tf2_ros::StaticTransformBroadcaster>(m_node);
-    geo::TransformStamped mapToOdom;
-    mapToOdom.header.frame_id = "map";
-    mapToOdom.child_frame_id = m_name + "_odom";
-    mapToOdom.transform = tf2::toMsg(m_currentTransformMapFrame);
-    m_mapOdomBroadcaster->sendTransform(mapToOdom);
+    if (publishMapToOdomTF)
+    {
+        m_mapOdomBroadcaster = std::make_shared<tf2_ros::StaticTransformBroadcaster>(m_node);
+        geo::TransformStamped mapToOdom;
+        mapToOdom.header.frame_id = "map";
+        mapToOdom.child_frame_id = m_name + "_odom";
+        mapToOdom.transform = tf2::toMsg(m_currentTransformMapFrame);
+        m_mapOdomBroadcaster->sendTransform(mapToOdom);
+    }
 
     // create the sensors specified in the YAML
     m_laserScanners.reserve(description.lasers.size());
@@ -71,9 +75,9 @@ void Robot::UpdatePose(float deltaTime)
         tf2::Vector3 linearMovementVelocity;
         tf2::fromMsg(m_currentVelocityMsg.twist.linear, linearMovementVelocity);
 
-        if (deltaAngle > 0)
+        if (std::abs(deltaAngle) > 0)
         {
-            float curvatureRadius = linearMovementVelocity.length() / angularSpeed;
+            float curvatureRadius = linearMovementVelocity.x() / angularSpeed;
             translation = tf2::Vector3(curvatureRadius * std::sin(deltaAngle), curvatureRadius * (1 - std::cos(deltaAngle)), 0);
         }
         else
