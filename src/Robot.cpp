@@ -172,7 +172,12 @@ void Robot::resetPoseCallback(geo::PoseWithCovarianceStamped::SharedPtr msg)
 #endif
     CellState cellState = m_sim->map.stateAt(position);
     if (cellState == CellState::Free)
+    {
         m_currentTransformMapFrame.setOrigin(position);
+        tf2::Quaternion rot;
+        tf2::fromMsg(msg->pose.pose.orientation, rot);
+        m_currentTransformMapFrame.setRotation(rot);
+    }
     else
         BS_ERROR("Trying to set robot %s to position (%.2f, %.2f, %.2f), but it is not free!", m_name.c_str(), position.x(), position.y(),
                  position.z());
