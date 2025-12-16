@@ -13,7 +13,6 @@ find_package(ament_cmake_auto REQUIRED)
 
 find_package(OpenCV REQUIRED)
 find_package(OpenMP REQUIRED)
-find_package(yaml-cpp)
 ament_auto_find_build_dependencies()
 
 #Target
@@ -31,8 +30,7 @@ ament_auto_add_executable(basic_sim
 
 target_link_libraries(basic_sim 
     ${OpenCV_LIBS}
-    OpenMP::OpenMP_CXX
-    yaml-cpp::yaml-cpp)
+    OpenMP::OpenMP_CXX)
 
 
 # Install
