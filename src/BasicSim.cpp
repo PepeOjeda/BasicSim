@@ -38,7 +38,7 @@ BasicSim::BasicSim()
 
 void BasicSim::Update()
 {
-#if 1
+#if 0
     Profiling::ScopedStopwatch stopwatch("MainLoop");
 #endif
     updateTime();
